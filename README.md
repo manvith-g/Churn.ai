@@ -1,14 +1,23 @@
-# Customer Churn Prediction using ANN 
+# Churn and Salary Prediction using ANN 
 
-A complete **Customer Churn Prediction** project built as part of my learning journey into **Artificial Neural Networks (ANN), Deep Learning, and Machine Learning deployment**.
+A complete **Customer Churn and Salary Prediction** project built as part of my learning journey into **Artificial Neural Networks (ANN), Deep Learning, and Machine Learning deployment**.
 
-This is a relatively small and simple dataset project. The primary objective of this project was not to achieve the highest possible accuracy or build a production-ready churn prediction system. Instead, my main goal was to understand how an Artificial Neural Network (ANN) actually works in practice — from data preprocessing and feature encoding to building the network, training it, evaluating it, making predictions, and finally deploying it as a web application.
+This is a relatively small and simple dataset project. The primary objective of this project was not to achieve the highest possible accuracy or build a production-ready prediction system. Instead, my main goal was to understand how Artificial Neural Networks (ANNs) work in practice — from data preprocessing and feature encoding to building networks, training them, evaluating them, making predictions, and finally deploying them as a web application.
 
 This project helped me bridge the gap between the theoretical concepts I was learning about ANN and their practical implementation in a complete end-to-end project.
 
 ---
 
 ## 📌 Project Overview
+
+The Streamlit application contains two prediction tasks trained on customer data:
+
+- **Customer Churn Prediction:** a binary classification model that predicts whether a customer is likely to leave.
+- **Salary Prediction:** a regression model that estimates a customer's annual salary.
+
+Users can switch between the two tasks from the application sidebar and run inference using the same customer profile information.
+
+### Customer Churn Prediction
 
 Customer churn occurs when a customer stops using a company's products or services.
 
@@ -34,11 +43,15 @@ The problem is treated as a **binary classification problem**:
 
 The trained ANN produces a probability between `0` and `1`. A threshold of `0.5` is used to make the final classification.
 
+### Salary Prediction
+
+The salary task is treated as a **regression problem**. The trained ANN predicts a continuous annual salary value based on customer demographics, financial information, activity, and churn status.
+
 ---
 
 # 🎯 Project Goal
 
-My goal with this project was not simply to train a neural network.
+My goal with this project was not simply to train neural networks.
 
 I wanted to understand the complete workflow:
 
@@ -63,7 +76,7 @@ Model Saving
    ↓
 Prediction
    ↓
-Streamlit Application
+Streamlit Application with Churn and Salary Modes
    ↓
 Cloud Deployment
 ```
@@ -92,7 +105,7 @@ While learning Artificial Neural Networks, I came across many concepts that init
 
 Instead of learning these concepts only theoretically, I wanted to apply them to a real-world problem.
 
-This Customer Churn Prediction project became my way of connecting the theory with practical implementation.
+This Churn and Salary Prediction project became my way of connecting the theory with practical implementation.
 
 ---
 
@@ -300,7 +313,7 @@ This prevents the model from unnecessarily continuing training once validation p
 
 # 💾 Model Saving
 
-After training, I saved the trained ANN using the Keras format:
+After training, I saved the trained classification and regression ANNs using the Keras format:
 
 ```text
 model.keras
@@ -310,18 +323,24 @@ I also saved the preprocessing objects so that new input data could be transform
 
 ```text
 model.keras
+regression_model.keras
 lebel_encoder_gender.pkl
 onehot_encoder_geo.pkl
 scalar.pkl
+regression_label_encoder_gender.pkl
+regression_one_hot_encoder.pkl
+regression_scalar.pkl
 ```
 
 This is extremely important because the preprocessing during prediction must match the preprocessing used during training.
 
 ---
 
-# 🔮 Prediction Pipeline
+# 🔮 Prediction Pipelines
 
-For a new customer, the application follows this process:
+### Churn classification
+
+For a new customer, the churn mode follows this process:
 
 ```text
 Customer Input
@@ -357,6 +376,24 @@ Therefore:
 Customer will churn
 ```
 
+### Salary regression
+
+The salary mode follows a similar preprocessing pipeline, then returns a continuous value:
+
+```text
+Customer Input
+   ↓
+Gender Encoding
+   ↓
+Geography One-Hot Encoding
+   ↓
+Feature Scaling
+   ↓
+ANN Regression Model
+   ↓
+Estimated Annual Salary
+```
+
 ---
 
 # 🌐 Streamlit Web Application
@@ -365,7 +402,7 @@ After training the model, I wanted to make it usable through a proper interface 
 
 I built a web application using **Streamlit**.
 
-The application allows users to enter:
+The application allows users to select either **Churn Prediction** or **Salary Prediction**, then enter:
 
 - Geography
 - Gender
@@ -378,7 +415,7 @@ The application allows users to enter:
 - Credit Card status
 - Active Member status
 
-Then the user can click the prediction button to get the result.
+Then the user can click the inference button to get either a churn probability and risk assessment or an estimated annual salary.
 
 ---
 
@@ -388,7 +425,7 @@ I also deployed the application using **Streamlit Community Cloud**.
 
 This introduced another important part of my learning journey: deployment and dependency management.
 
-🌐 [View the deployed Customer Churn Prediction App](https://churnai-6fmszu7jzgkpfbtbovfbmm.streamlit.app/)
+🌐 [View the deployed Churn and Salary Prediction App](https://churnai-6fmszu7jzgkpfbtbovfbmm.streamlit.app/)
 ---
 
 # 🛠️ Technologies Used
@@ -434,10 +471,14 @@ Churn.ai/
 │
 ├── app.py
 ├── model.keras
+├── regression_model.keras
 │
 ├── lebel_encoder_gender.pkl
 ├── onehot_encoder_geo.pkl
 ├── scalar.pkl
+├── regression_label_encoder_gender.pkl
+├── regression_one_hot_encoder.pkl
+├── regression_scalar.pkl
 │
 ├── requirements.txt
 │
@@ -501,11 +542,13 @@ This project taught me much more than just how to train an ANN.
 ## Machine Learning
 
 - Binary classification
+- Regression
 - Train/test splitting
 - Feature preprocessing
 - Feature scaling
 - Model evaluation
 - Prediction probabilities
+- Continuous value prediction
 
 ## Artificial Neural Networks
 
@@ -548,7 +591,7 @@ This project taught me much more than just how to train an ANN.
 
 # ❤️ My Learning Journey
 
-This project represents an important step in my journey of learning Artificial Neural Networks.
+This project represents an important step in my journey of learning Artificial Neural Networks and applying them to both classification and regression problems.
 
 When I started, concepts such as:
 
@@ -590,10 +633,10 @@ Deploying the application
 
 This project therefore isn't just a Customer Churn Prediction project for me.
 
-It represents my first practical step toward understanding Deep Learning and building end-to-end AI applications.
+It now also includes salary regression, making it a broader practical step toward understanding Deep Learning and building end-to-end AI applications.
 
 ---
 
 ## ⭐ Final Thoughts
 
-> **This project is a representation of my learning journey with Artificial Neural Networks. It started with understanding the basic theory of neural networks and gradually evolved into building a complete end-to-end machine-learning application. Every error, debugging session, preprocessing problem, model experiment, and deployment issue became part of the learning process. This project is not the destination of my AI journey — it is one of the first steps.**
+> **This project is a representation of my learning journey with Artificial Neural Networks. It started with understanding the basic theory of neural networks and gradually evolved into building an end-to-end application for both churn classification and salary regression. Every error, debugging session, preprocessing problem, model experiment, and deployment issue became part of the learning process. This project is not the destination of my AI journey — it is one of the first steps.**
