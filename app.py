@@ -5,9 +5,7 @@ import pickle
 import plotly.graph_objects as go
 from tensorflow.keras.models import load_model
 
-# ============================================================
-# PAGE CONFIG
-# ============================================================
+
 st.set_page_config(
     page_title="ChurnAI | Predictive Analytics Dashboard",
     page_icon="⚡",
@@ -15,9 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================================
-# STYLING
-# ============================================================
+
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
@@ -116,6 +112,20 @@ st.markdown("""
         background: rgba(255,255,255,0.04); margin: 4px 6px 4px 0;
     }
 
+    /* Mode switch pills */
+    div[role="radiogroup"] {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 6px;
+        gap: 4px;
+    }
+    div[role="radiogroup"] label {
+        background: transparent;
+        border-radius: 8px;
+        padding: 6px 14px;
+    }
+
     @keyframes fadein { from {opacity:0; transform: translateY(6px);} to {opacity:1; transform: translateY(0);} }
     .fadein { animation: fadein 0.45s ease-out; }
 
@@ -124,11 +134,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# ASSET LOADING (with friendly error handling)
-# ============================================================
+
 @st.cache_resource
-def load_assets():
+def load_churn_assets():
     model = load_model('model.keras')
     with open('lebel_encoder_gender.pkl', 'rb') as f:
         le_gender = pickle.load(f)
@@ -138,33 +146,53 @@ def load_assets():
         scaler = pickle.load(f)
     return model, le_gender, ohe_geo, scaler
 
-try:
-    model, le_gender, ohe_geo, scaler = load_assets()
-    assets_ok = True
-except Exception as e:
-    assets_ok = False
-    st.error(f"⚠️ Couldn't load model assets: `{e}`. Make sure model.keras, "
-             f"lebel_encoder_gender.pkl, onehot_encoder_geo.pkl and scalar.pkl "
-             f"are in the same folder as this script.")
+@st.cache_resource
+def load_salary_assets():
+    model = load_model('regression_model.keras')
+    with open('regression_label_encoder_gender.pkl', 'rb') as f:
+        le_gender = pickle.load(f)
+    with open('regression_one_hot_encoder.pkl', 'rb') as f:
+        ohe_geo = pickle.load(f)
+    with open('regression_scalar.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+    return model, le_gender, ohe_geo, scaler
 
-# ============================================================
-# SIDEBAR
-# ============================================================
+
 with st.sidebar:
     st.markdown("### ⚡ CHURN.AI")
-    st.caption("Deep learning risk-scoring engine")
+    st.caption("Deep learning predictive suite")
     st.markdown("---")
-    st.markdown(
-        """
-        **How to use**
-        1. Fill in the customer profile
-        2. Click **Run Inference**
-        3. Read the risk score & drivers
 
-        Built with an ANN classifier trained on
-        bank customer data.
-        """
+    mode = st.radio(
+        "Select task",
+        ["Churn Prediction", "Salary Prediction"],
+        label_visibility="collapsed"
     )
+
+    st.markdown("---")
+    if mode == "Churn Prediction":
+        st.markdown(
+            """
+            **How to use**
+            1. Fill in the customer profile
+            2. Click **Run Inference**
+            3. Read the risk score & drivers
+
+            ANN classifier trained on bank customer data.
+            """
+        )
+    else:
+        st.markdown(
+            """
+            **How to use**
+            1. Fill in the customer profile
+            2. Click **Run Inference**
+            3. Read the predicted salary
+
+            ANN regressor trained on bank customer data.
+            """
+        )
+
     st.markdown("---")
     if "history" not in st.session_state:
         st.session_state.history = []
@@ -173,17 +201,27 @@ with st.sidebar:
         st.session_state.history = []
         st.rerun()
 
-# ============================================================
-# HEADER / STATUS BAR
-# ============================================================
+
+assets_ok = True
+load_error = None
+try:
+    if mode == "Churn Prediction":
+        model, le_gender, ohe_geo, scaler = load_churn_assets()
+    else:
+        model, le_gender, ohe_geo, scaler = load_salary_assets()
+except Exception as e:
+    assets_ok = False
+    load_error = e
+
+
 col_logo, col_stat1, col_stat2, col_stat3 = st.columns([3, 1, 1, 1])
 with col_logo:
     st.markdown("<h2 style='margin:0; font-weight:800; letter-spacing:-1px; color:#fff;'>CHURN<span style='color:#ff6b00;'>.AI</span></h2>", unsafe_allow_html=True)
-    st.caption("Deep Learning Risk Scoring Engine • v2.5")
+    st.caption(f"{mode} • v3.0")
 with col_stat1:
-    st.markdown("<div class='metric-box'><div class='metric-value'>ANN</div><div class='metric-label'>Model Type</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-box'><div class='metric-value'>{'CLS' if mode == 'Churn Prediction' else 'REG'}</div><div class='metric-label'>Task Type</div></div>", unsafe_allow_html=True)
 with col_stat2:
-    st.markdown("<div class='metric-box'><div class='metric-value'>v2.5</div><div class='metric-label'>Build</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='metric-box'><div class='metric-value'>v3.0</div><div class='metric-label'>Build</div></div>", unsafe_allow_html=True)
 with col_stat3:
     status = "ONLINE" if assets_ok else "OFFLINE"
     color = "#00e676" if assets_ok else "#ff3344"
@@ -192,49 +230,11 @@ with col_stat3:
 st.write("")
 
 if not assets_ok:
+    st.error(f"⚠️ Couldn't load model assets for **{mode}**: `{load_error}`. "
+             f"Make sure the required .keras/.pkl files for this mode are in the same folder as this script.")
     st.stop()
 
-# ============================================================
-# INPUT FORM
-# ============================================================
-left_col, mid_col, right_col = st.columns([1.1, 1.2, 1.3])
 
-with left_col:
-    with st.container(border=True):
-        st.markdown("<span class='bento-header'>👤 01 · Demographics</span>", unsafe_allow_html=True)
-        geography = st.selectbox('Geography', ohe_geo.categories_[0])
-        gender = st.selectbox('Gender', le_gender.classes_)
-        age = st.slider('Age', 18, 92, 35)
-
-    with st.container(border=True):
-        st.markdown("<span class='bento-header'>📊 02 · Activity & Engagement</span>", unsafe_allow_html=True)
-        tenure = st.slider('Tenure (Years)', 0, 10, 3)
-        num_of_products = st.slider('Active Products', 1, 4, 2)
-        is_active_member = st.select_slider(
-            'Is Active Member',
-            options=[0, 1],
-            value=1,
-            format_func=lambda x: "Yes" if x == 1 else "No"
-        )
-
-with mid_col:
-    with st.container(border=True):
-        st.markdown("<span class='bento-header'>💳 03 · Financial Profile</span>", unsafe_allow_html=True)
-        credit_score = st.number_input('Credit Score', min_value=300, max_value=850, value=650, step=1)
-        balance = st.number_input('Account Balance ($)', min_value=0.0, value=50000.0, step=1000.0)
-        estimated_salary = st.number_input('Estimated Annual Salary ($)', min_value=0.0, value=75000.0, step=1000.0)
-        has_cr_card = st.select_slider(
-            'Has Credit Card',
-            options=[0, 1],
-            value=1,
-            format_func=lambda x: "Yes" if x == 1 else "No"
-        )
-        st.write("")
-        predict_clicked = st.button("RUN INFERENCE ⚡", use_container_width=True)
-
-# ============================================================
-# GAUGE CHART HELPER
-# ============================================================
 def make_gauge(probability, color):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -262,10 +262,7 @@ def make_gauge(probability, color):
     )
     return fig
 
-# ============================================================
-# RISK DRIVERS (simple, transparent heuristics — not SHAP)
-# ============================================================
-def get_risk_factors():
+def get_risk_factors(num_of_products, is_active_member, age, balance, tenure, has_cr_card):
     factors = []
     if num_of_products == 1:
         factors.append(("Only 1 product", "risk"))
@@ -285,90 +282,214 @@ def get_risk_factors():
         factors.append(("Has credit card", "safe"))
     return factors
 
-# ============================================================
-# OUTPUT
-# ============================================================
-with right_col:
-    with st.container(border=True):
-        st.markdown("<span class='bento-header'>🎯 04 · Inference Output</span>", unsafe_allow_html=True)
 
-        if predict_clicked:
-            with st.spinner("Scoring customer profile..."):
-                input_data = pd.DataFrame({
-                    'CreditScore': [credit_score],
-                    'Geography': [geography],
-                    'Gender': [le_gender.transform([gender])[0]],
-                    'Age': [age],
-                    'Tenure': [tenure],
-                    'Balance': [balance],
-                    'NumOfProducts': [num_of_products],
-                    'HasCrCard': [has_cr_card],
-                    'IsActiveMember': [is_active_member],
-                    'EstimatedSalary': [estimated_salary]
+if mode == "Churn Prediction":
+    left_col, mid_col, right_col = st.columns([1.1, 1.2, 1.3])
+
+    with left_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>👤 01 · Demographics</span>", unsafe_allow_html=True)
+            geography = st.selectbox('Geography', ohe_geo.categories_[0])
+            gender = st.selectbox('Gender', le_gender.classes_)
+            age = st.slider('Age', 18, 92, 35)
+
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>📊 02 · Activity & Engagement</span>", unsafe_allow_html=True)
+            tenure = st.slider('Tenure (Years)', 0, 10, 3)
+            num_of_products = st.slider('Active Products', 1, 4, 2)
+            is_active_member = st.select_slider(
+                'Is Active Member', options=[0, 1], value=1,
+                format_func=lambda x: "Yes" if x == 1 else "No"
+            )
+
+    with mid_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>💳 03 · Financial Profile</span>", unsafe_allow_html=True)
+            credit_score = st.number_input('Credit Score', min_value=300, max_value=850, value=650, step=1)
+            balance = st.number_input('Account Balance ($)', min_value=0.0, value=50000.0, step=1000.0)
+            estimated_salary = st.number_input('Estimated Annual Salary ($)', min_value=0.0, value=75000.0, step=1000.0)
+            has_cr_card = st.select_slider(
+                'Has Credit Card', options=[0, 1], value=1,
+                format_func=lambda x: "Yes" if x == 1 else "No"
+            )
+            st.write("")
+            predict_clicked = st.button("RUN INFERENCE ⚡", use_container_width=True)
+
+    with right_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>🎯 04 · Inference Output</span>", unsafe_allow_html=True)
+
+            if predict_clicked:
+                with st.spinner("Scoring customer profile..."):
+                    input_data = pd.DataFrame({
+                        'CreditScore': [credit_score],
+                        'Geography': [geography],
+                        'Gender': [le_gender.transform([gender])[0]],
+                        'Age': [age],
+                        'Tenure': [tenure],
+                        'Balance': [balance],
+                        'NumOfProducts': [num_of_products],
+                        'HasCrCard': [has_cr_card],
+                        'IsActiveMember': [is_active_member],
+                        'EstimatedSalary': [estimated_salary]
+                    })
+
+                    geo_encoded = pd.DataFrame(
+                        ohe_geo.transform(input_data[['Geography']]).toarray(),
+                        columns=ohe_geo.get_feature_names_out(['Geography'])
+                    )
+
+                    data = pd.concat([input_data, geo_encoded], axis=1).drop('Geography', axis=1)
+                    data_scaled = scaler.transform(data)
+
+                    prediction = model.predict(data_scaled, verbose=0)
+                    probability = float(prediction[0][0])
+
+                is_churn = probability >= 0.5
+                status_color = "#ff3344" if is_churn else "#00e676"
+                status_label = "HIGH CHURN RISK" if is_churn else "LIKELY RETAINED"
+
+                st.session_state.history.append({
+                    "Mode": "Churn", "Geography": geography, "Gender": gender, "Age": age,
+                    "Result": f"{status_label} ({probability:.1%})"
                 })
 
-                geo_encoded = pd.DataFrame(
-                    ohe_geo.transform(input_data[['Geography']]).toarray(),
-                    columns=ohe_geo.get_feature_names_out(['Geography'])
-                )
+                st.plotly_chart(make_gauge(probability, status_color), use_container_width=True)
 
-                data = pd.concat([input_data, geo_encoded], axis=1).drop('Geography', axis=1)
-                data_scaled = scaler.transform(data)
+                st.markdown(f"""
+                    <div class="fadein" style="text-align:center; margin-top:-10px;">
+                        <span class="risk-chip" style="border:1px solid {status_color}; color:{status_color};">
+                            ● {status_label}
+                        </span>
+                    </div>
+                """, unsafe_allow_html=True)
 
-                prediction = model.predict(data_scaled, verbose=0)
-                probability = float(prediction[0][0])
+                st.write("")
+                st.markdown("<span class='bento-header' style='margin-bottom:6px;'>🔍 Key Drivers</span>", unsafe_allow_html=True)
+                factors = get_risk_factors(num_of_products, is_active_member, age, balance, tenure, has_cr_card)
+                if factors:
+                    chips = ""
+                    for label, kind in factors:
+                        c = "#ff3344" if kind == "risk" else "#00e676"
+                        chips += f"<span class='risk-chip' style='border:1px solid {c}55; color:{c};'>{'▲' if kind=='risk' else '▼'} {label}</span>"
+                    st.markdown(f"<div class='fadein'>{chips}</div>", unsafe_allow_html=True)
+                else:
+                    st.caption("No strong risk or retention signals detected.")
 
-            is_churn = probability >= 0.5
-            status_color = "#ff3344" if is_churn else "#00e676"
-            status_label = "HIGH CHURN RISK" if is_churn else "LIKELY RETAINED"
-
-            st.session_state.history.append({
-                "Geography": geography, "Gender": gender, "Age": age,
-                "Probability": round(probability, 3), "Result": status_label
-            })
-
-            st.plotly_chart(make_gauge(probability, status_color), use_container_width=True)
-
-            st.markdown(f"""
-                <div class="fadein" style="text-align:center; margin-top:-10px;">
-                    <span class="risk-chip" style="border:1px solid {status_color}; color:{status_color};">
-                        ● {status_label}
-                    </span>
-                </div>
-            """, unsafe_allow_html=True)
-
-            st.write("")
-            st.markdown("<span class='bento-header' style='margin-bottom:6px;'>🔍 Key Drivers</span>", unsafe_allow_html=True)
-            factors = get_risk_factors()
-            if factors:
-                chips = ""
-                for label, kind in factors:
-                    c = "#ff3344" if kind == "risk" else "#00e676"
-                    chips += f"<span class='risk-chip' style='border:1px solid {c}55; color:{c};'>{'▲' if kind=='risk' else '▼'} {label}</span>"
-                st.markdown(f"<div class='fadein'>{chips}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div style="margin-top:16px; font-size:0.8rem; color:#8b949e; line-height:1.6; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
+                        <b style="color:#fff;">Summary:</b> This customer profile carries a
+                        <b style="color:{status_color};">{probability:.1%}</b> churn probability.
+                        {"Consider proactive retention outreach — check pricing tier, product bundle, and recent support tickets." if is_churn else "Profile looks healthy — standard engagement cadence should suffice."}
+                    </div>
+                """, unsafe_allow_html=True)
             else:
-                st.caption("No strong risk or retention signals detected.")
+                st.markdown("""
+                    <div style="text-align:center; padding:70px 15px; color:#4b5363;">
+                        <div style="font-size:2.2rem; margin-bottom:8px;">⚡</div>
+                        <div style="font-family:'JetBrains Mono'; font-size:0.85rem; font-weight:700; color:#8b949e;">STANDBY MODE</div>
+                        <div style="font-size:0.75rem; margin-top:6px;">Adjust parameters and click <b>Run Inference</b> to generate real-time churn telemetry.</div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-            st.markdown(f"""
-                <div style="margin-top:16px; font-size:0.8rem; color:#8b949e; line-height:1.6; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
-                    <b style="color:#fff;">Summary:</b> This customer profile carries a
-                    <b style="color:{status_color};">{probability:.1%}</b> churn probability.
-                    {"Consider proactive retention outreach — check pricing tier, product bundle, and recent support tickets." if is_churn else "Profile looks healthy — standard engagement cadence should suffice."}
-                </div>
-            """, unsafe_allow_html=True)
 
-        else:
-            st.markdown("""
-                <div style="text-align:center; padding:70px 15px; color:#4b5363;">
-                    <div style="font-size:2.2rem; margin-bottom:8px;">⚡</div>
-                    <div style="font-family:'JetBrains Mono'; font-size:0.85rem; font-weight:700; color:#8b949e;">STANDBY MODE</div>
-                    <div style="font-size:0.75rem; margin-top:6px;">Adjust parameters and click <b>Run Inference</b> to generate real-time churn telemetry.</div>
-                </div>
-            """, unsafe_allow_html=True)
+else:
+    left_col, mid_col, right_col = st.columns([1.1, 1.2, 1.3])
 
-# ============================================================
-# SESSION HISTORY (optional, collapsible)
-# ============================================================
+    with left_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>👤 01 · Demographics</span>", unsafe_allow_html=True)
+            geography = st.selectbox('Geography', ohe_geo.categories_[0])
+            gender = st.selectbox('Gender', le_gender.classes_)
+            age = st.slider('Age', 18, 92, 35)
+
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>📊 02 · Activity & Engagement</span>", unsafe_allow_html=True)
+            tenure = st.slider('Tenure (Years)', 0, 10, 3)
+            num_of_products = st.slider('Active Products', 1, 4, 2)
+            is_active_member = st.select_slider(
+                'Is Active Member', options=[0, 1], value=1,
+                format_func=lambda x: "Yes" if x == 1 else "No"
+            )
+            exited = st.select_slider(
+                'Has Exited (Churned)', options=[0, 1], value=0,
+                format_func=lambda x: "Yes" if x == 1 else "No"
+            )
+
+    with mid_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>💳 03 · Financial Profile</span>", unsafe_allow_html=True)
+            credit_score = st.number_input('Credit Score', min_value=300, max_value=850, value=650, step=1)
+            balance = st.number_input('Account Balance ($)', min_value=0.0, value=50000.0, step=1000.0)
+            has_cr_card = st.select_slider(
+                'Has Credit Card', options=[0, 1], value=1,
+                format_func=lambda x: "Yes" if x == 1 else "No"
+            )
+            st.write("")
+            predict_clicked = st.button("RUN INFERENCE ⚡", use_container_width=True)
+
+    with right_col:
+        with st.container(border=True):
+            st.markdown("<span class='bento-header'>🎯 04 · Inference Output</span>", unsafe_allow_html=True)
+
+            if predict_clicked:
+                with st.spinner("Estimating salary..."):
+                    input_data = pd.DataFrame({
+                        'CreditScore': [credit_score],
+                        'Gender': [le_gender.transform([gender])[0]],
+                        'Age': [age],
+                        'Tenure': [tenure],
+                        'Balance': [balance],
+                        'NumOfProducts': [num_of_products],
+                        'HasCrCard': [has_cr_card],
+                        'IsActiveMember': [is_active_member],
+                        'Exited': [exited]
+                    })
+
+                    geo_encoded = ohe_geo.transform([[geography]]).toarray()
+                    geo_encoded_df = pd.DataFrame(
+                        geo_encoded, columns=ohe_geo.get_feature_names_out(['Geography'])
+                    )
+
+                    full_input = pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=1)
+                    input_scaled = scaler.transform(full_input)
+
+                    prediction = model.predict(input_scaled, verbose=0)
+                    predicted_salary = float(prediction[0][0])
+
+                st.session_state.history.append({
+                    "Mode": "Salary", "Geography": geography, "Gender": gender, "Age": age,
+                    "Result": f"${predicted_salary:,.2f}"
+                })
+
+                st.markdown(f"""
+                    <div class="fadein" style="text-align:center; padding: 30px 10px;">
+                        <div style="font-family:'JetBrains Mono'; font-size:0.8rem; color:#8b949e; text-transform:uppercase; letter-spacing:1.5px;">
+                            Estimated Annual Salary
+                        </div>
+                        <div style="font-family:'JetBrains Mono'; font-size:2.6rem; font-weight:800; color:#ff6b00; margin-top:8px;">
+                            ${predicted_salary:,.2f}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown(f"""
+                    <div style="margin-top:8px; font-size:0.8rem; color:#8b949e; line-height:1.6; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
+                        <b style="color:#fff;">Summary:</b> Based on this customer's credit score, balance,
+                        tenure and demographic profile, the model estimates an annual salary of
+                        <b style="color:#ff6b00;">${predicted_salary:,.2f}</b>.
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                    <div style="text-align:center; padding:70px 15px; color:#4b5363;">
+                        <div style="font-size:2.2rem; margin-bottom:8px;">⚡</div>
+                        <div style="font-family:'JetBrains Mono'; font-size:0.85rem; font-weight:700; color:#8b949e;">STANDBY MODE</div>
+                        <div style="font-size:0.75rem; margin-top:6px;">Adjust parameters and click <b>Run Inference</b> to generate a salary estimate.</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+
 if st.session_state.history:
     with st.expander(f"📜 Session history ({len(st.session_state.history)} predictions)"):
         st.dataframe(pd.DataFrame(st.session_state.history), use_container_width=True, hide_index=True)
